@@ -148,36 +148,54 @@ shinyServer(function(input, output, session) {
   
   # CREATE ACCOUNT: MAIN UI PAGE -----
   
+  rv_create_account <- reactiveValues(
+    captcha_1 = NULL,
+    captcha_2 = NULL)
+  
   # UI for the page 
   output$create_account_ui <- renderUI({
     ui <- NULL
     if(!is.null(isolate(rv_user$user_id))) {
       ui <- p("Please log out first.")
     } else {
+      # Set captcha:
+      rv_create_account$captcha_1 <- sample(1:9, 1)
+      rv_create_account$captcha_2 <- sample(1:9, 1)
+      
       ui <- list(
         div(
           style = "background-color:white; border:solid 1px #232323; width:80%; 
           max-width:700px; margin:10px auto; padding:15px;",
           div(style = "text-align:center;", h3("Account details")),
           fluidRow(
-            column(width = 4, p(id = "input_text", "* User name")),
+            column(width = 4, p("* User name")),
             column(width = 8, textInput("create_account_name", NULL, value = ""))
           ),
           fluidRow(
-            column(width = 4, p(id = "input_text", "Email")),
+            column(width = 4, p("Email")),
             column(width = 8, textInput("create_account_email", NULL, value = ""))
           ),
           fluidRow(
-            column(width = 4, p(id = "input_text", "* Password")),
+            column(width = 4, p("* Password")),
             column(width = 8,  passwordInput("create_account_password1", NULL))
           ),
           fluidRow(
-            column(width = 4, p(id = "input_text", "* Retype Password")),
+            column(width = 4, p("* Retype Password")),
             column(width = 8, passwordInput("create_account_password2", NULL))
           ),
-          checkboxInput("input_form_disclaimer", "Terms and Conditions: I click therefore I am."),
-          actionButton("create_account_button", "Create Account",
-                       style = "color: #232323; background-color: #65ff00; border-color: #434343;")
+          fluidRow(
+            column(width = 4, p(paste0("* What is '", rv_create_account$captcha_1, " + ",
+                                       names(captcha)[rv_create_account$captcha_2], 
+                                       "'? (robot check)"))),
+            column(width = 8, numericInput("create_account_captcha", NULL, value = NULL, 
+                                           width = "80px"))
+          ),
+          checkboxInput("create_account_disclaimer", 
+                        "* Terms and Conditions: I click therefore I am."),
+          div(style = "text-align:center;",
+              actionButton("create_account_button", "Create Account",
+                           style = "color: #232323; background-color: #65ff00; border-color: #434343;")
+          )
         ),
         div(style = "height:200px")
       )
@@ -230,7 +248,7 @@ shinyServer(function(input, output, session) {
       return()
     }
     # Check if email address is unique 
-    if(input$create_account_email %in% user_$email) {
+    if(input$create_account_email != "" & input$create_account_email %in% user_$email) {
       showModal(modalDialog(
         title = "Email error",
         "Email address already in use",
@@ -256,15 +274,28 @@ shinyServer(function(input, output, session) {
       ))
       return()
     }
-    # Check if passwords are the same
-    if(!input$input_form_disclaimer) {
+    # Check if captcha is entered correctly
+    if(!is.na(input$create_account_captcha)) {
+      if(input$create_account_captcha != rv_create_account$captcha_1 + rv_create_account$captcha_2) {
+        showModal(modalDialog(
+          title = "Robot check (like reCaptcha)",
+          paste0("Please solve the calculation: '", 
+                 rv_create_account$captcha_1, " + ",
+                 names(captcha)[rv_create_account$captcha_2], "'"),
+          easyClose = TRUE, footer = NULL
+        ))
+        return()
+      }
+    }
+    # Check if Terms and conditions were agreed
+    if(!input$create_account_disclaimer) {
       showModal(modalDialog(
         title = "Terms and Conditions",
         "You have to agree with the terms and conditions to continue",
         easyClose = TRUE, footer = NULL
       ))
       return()
-    }
+    }   
     
     
     # Add new user to user database
