@@ -92,7 +92,7 @@ shinyServer(function(input, output, session) {
 
     user_ <- pool %>% 
       tbl("user") %>%
-      filter(user_name == input$user_name | email == input$user_name) %>% 
+      filter(user_name == local(input$user_name) | email == local(input$user_name)) %>% 
       collect()
     
     if(nrow(user_) == 1) {
@@ -301,9 +301,9 @@ shinyServer(function(input, output, session) {
     # Add new user to user database
     new_user <- tibble(
       user_id     = max(user_$user_id) + 1,
-      user_name   = input$create_account_name,
-      email       = input$create_account_email,
-      pw_hash     = input$create_account_password1 %>% 
+      user_name   = local(input$create_account_name),
+      email       = local(input$create_account_email),
+      pw_hash     = local(input$create_account_password1) %>% 
         charToRaw() %>% 
         hash() %>% 
         as.character() %>% 
